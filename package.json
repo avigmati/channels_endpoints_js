@@ -2,9 +2,10 @@
   "name": "channels_endpoints",
   "version": "1.0.0",
   "description": "Client library for channels_endpoints python package",
-  "main": "index.js",
+  "main": "dist/bundle.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --mode=production"
   },
   "repository": {
     "type": "git",
@@ -23,5 +24,11 @@
   "homepage": "https://github.com/avigmati/channels_endpoints_js#readme",
   "dependencies": {
     "reconnecting-websocket": "^4.4.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-loader": "^8.2.2",
+    "babel-preset-env": "^1.7.0",
+    "webpack": "^5.52.0"
   }
 }
