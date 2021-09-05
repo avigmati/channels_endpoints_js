@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/avigmati/channels_endpoints_js/issues"
   },
-  "homepage": "https://github.com/avigmati/channels_endpoints_js#readme"
+  "homepage": "https://github.com/avigmati/channels_endpoints_js#readme",
+  "dependencies": {
+    "reconnecting-websocket": "^4.4.0"
+  }
 }
