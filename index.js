@@ -7,15 +7,10 @@
 
 import ReconnectingWebSocket from 'reconnecting-websocket'
 
-export function DceException(error, data) {
+const DceException = (error, data) => {
     this.error = error
     this.data = data
 }
-
-
-/*
-Init
- */
 
 const debug = (typeof DCE_DEBUG !== 'undefined') ? DCE_DEBUG : false
 const verbose = (typeof DCE_VERBOSE !== 'undefined') ? DCE_VERBOSE : false
@@ -36,35 +31,6 @@ let socket = new ReconnectingWebSocket(socket_url, null,
 )
 
 let cmd_id = 0
-
-/*
-Connection event
-
-usage:
-    import { dce_connection } from './dce'
-
-    dce_connection.addEventListener("connected", () => {
-            console.log("connected")
-        }
-    )
-    dce_connection.addEventListener("disconnected", () => {
-            console.log("disconnected")
-        }
-    )
-*/
-
-let dce_connected_event_target = function(options) {
-    // Create a DOM EventTarget object
-    let target = document.createTextNode(null)
-
-    // Pass EventTarget interface calls to DOM EventTarget object
-    this.addEventListener = target.addEventListener.bind(target)
-    this.removeEventListener = target.removeEventListener.bind(target)
-    this.dispatchEvent = target.dispatchEvent.bind(target)
-}
-
-export const dce_connection = new dce_connected_event_target()
-
 
 /*
 Socket callbacks
@@ -173,7 +139,7 @@ const waitConnection = (func) => {
     }
 }
 
-exports.dce = function(endpoint, data, token, log_data_filter=null, push=false) {
+const dce = (endpoint, data, token, log_data_filter=null, push=false) => {
     /*
     Promises factory and sender
     */
@@ -254,16 +220,51 @@ Consumers
 let registered_consumers = {}
 
 
-exports.consumer = function (func) {
+const consumer = func => {
     if (typeof func !== 'function') {
         throw new DceException(`Registered consumer "${func}" must be a function.`, null)
     }
     registered_consumers[func.prototype.constructor.name] = func
 }
 
-const get_consumer = (name) => {
+const get_consumer = name => {
     if (!registered_consumers.hasOwnProperty(name)) {
       throw new DceException(`Consumer ${name} not found.`)
     }
     return registered_consumers[name]
+}
+
+/*
+Connection event
+
+usage:
+    import { dce_connection } from './dce'
+
+    dce_connection.addEventListener("connected", () => {
+            console.log("connected")
+        }
+    )
+    dce_connection.addEventListener("disconnected", () => {
+            console.log("disconnected")
+        }
+    )
+*/
+
+let dce_connected_event_target = function(options) {
+    // Create a DOM EventTarget object
+    let target = document.createTextNode(null)
+
+    // Pass EventTarget interface calls to DOM EventTarget object
+    this.addEventListener = target.addEventListener.bind(target)
+    this.removeEventListener = target.removeEventListener.bind(target)
+    this.dispatchEvent = target.dispatchEvent.bind(target)
+}
+
+const dce_connection = new dce_connected_event_target()
+
+
+export {
+    dce,
+    consumer,
+    dce_connection
 }
