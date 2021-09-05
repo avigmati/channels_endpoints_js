@@ -1,0 +1,24 @@
+{
+  "name": "channels_endpoints",
+  "version": "1.0.0",
+  "description": "Client library for channels_endpoints python package",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avigmati/channels_endpoints_js.git"
+  },
+  "keywords": [
+    "django",
+    "channels",
+    "websocket"
+  ],
+  "author": "avigmati",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/avigmati/channels_endpoints_js/issues"
+  },
+  "homepage": "https://github.com/avigmati/channels_endpoints_js#readme"
+}
