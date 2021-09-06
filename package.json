@@ -1,6 +1,6 @@
 {
   "name": "channels_endpoints",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Client library for channels_endpoints python package",
   "main": "dist/bundle.js",
   "scripts": {
