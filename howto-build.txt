@@ -1,3 +1,0 @@
-for build just run:
-npm run build
-the bundle.js will be in the dist directory
