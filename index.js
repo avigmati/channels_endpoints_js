@@ -7,7 +7,7 @@
 
 import ReconnectingWebSocket from 'reconnecting-websocket'
 
-const DceException = (error, data) => {
+export function DceException(error, data) {
     this.error = error
     this.data = data
 }
@@ -139,7 +139,7 @@ const waitConnection = (func) => {
     }
 }
 
-const dce = (endpoint, data, token, log_data_filter=null, push=false) => {
+export const dce = (endpoint, data, token, log_data_filter=null, push=false) => {
     /*
     Promises factory and sender
     */
@@ -220,7 +220,7 @@ Consumers
 let registered_consumers = {}
 
 
-const consumer = func => {
+export const consumer = func => {
     if (typeof func !== 'function') {
         throw new DceException(`Registered consumer "${func}" must be a function.`, null)
     }
@@ -260,11 +260,4 @@ let dce_connected_event_target = function(options) {
     this.dispatchEvent = target.dispatchEvent.bind(target)
 }
 
-const dce_connection = new dce_connected_event_target()
-
-
-export {
-    dce,
-    consumer,
-    dce_connection
-}
+export const dce_connection = new dce_connected_event_target()
