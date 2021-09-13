@@ -28,7 +28,7 @@ dce_connection.addEventListener("disconnected", () => {
     }
 )
 
-consumer(function EventsConsumer(response) {
+consumer('EventsConsumer', (response) => {
     console.log('EventsConsumer received: ', response.data)
 })
 
