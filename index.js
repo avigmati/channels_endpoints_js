@@ -1,20 +1,40 @@
 'use strict'
 
 /**
- * django channels endpoints frontend app
- * @author avigmati@gmail.com
+ * django channels_endpoints app client library
+ * @author Dmitry Novikov avigmati@gmail.com
  */
 
 import ReconnectingWebSocket from 'reconnecting-websocket'
+import cloneDeep from 'lodash.clonedeep'
+
+
+// dce setup
+let promises = {}  // dce calls
+let cmd_id = 0  // dce calls counter (rpc)
 
 export function DceException(error, data) {
     this.error = error
     this.data = data
 }
 
+// logging setup
 const debug = (typeof DCE_DEBUG !== 'undefined') ? DCE_DEBUG : false
-const verbose = (typeof DCE_VERBOSE !== 'undefined') ? DCE_VERBOSE : false
+const debug_data_request = (typeof DCE_DEBUG_DATA_REQUEST !== 'undefined') ? DCE_DEBUG_DATA_REQUEST : false
+const debug_data_response = (typeof DCE_DEBUG_DATA_RESPONSE !== 'undefined') ? DCE_DEBUG_DATA_RESPONSE : false
 
+const log = (log_str, log_data=null) => {
+    log_str = `[dce] ${log_str}`
+    if (debug) {
+        if (debug_data_request && log_data) {
+            console.log(log_str, log_data)
+        } else {
+            console.log(log_str)
+        }
+    }
+}
+
+// socket setup
 let socket_url
 if (typeof DCE_SOCKET_URL === 'undefined') {
     throw new DceException('DCE_SOCKET_URL undefined.', null)
@@ -22,27 +42,25 @@ if (typeof DCE_SOCKET_URL === 'undefined') {
     socket_url = DCE_SOCKET_URL
 }
 
-let promises = []  // dce calls
+let options = {debug: debug}
+if (typeof DCE_SOCKET_OPTIONS !== 'undefined') {
+    options = DCE_SOCKET_OPTIONS
+}
 
-let socket = new ReconnectingWebSocket(socket_url, null,
-    {
-        debug: debug,
-    }
-)
+let socket = new ReconnectingWebSocket(socket_url, null, options)
 
-let cmd_id = 0
 
 /*
 Socket callbacks
  */
 
 const onopen = () => {
-    console.log('Connection open')
+    log('Connection open')
     dce_connection.dispatchEvent(new Event('connected'))
 }
 
 const onclose = () => {
-    console.log('Connection close')
+    log('Connection close')
     dce_connection.dispatchEvent(new Event('disconnected'))
 }
 
@@ -59,14 +77,12 @@ const onmessage = (event) => {
         throw new DceException('Response parse json error: ' + e, null)
     }
 
-    // service responses
+    // service response
     if (response.msg_type === 'service') {
         if (response.error) {
             throw new DceException(response.error, response.error_data)
         } else {
-            if (debug){
-                console.log(response.data)
-            }
+            log('service:', response.data)
         }
     }
 
@@ -76,46 +92,45 @@ const onmessage = (event) => {
         // rpc response, resolve promise
         if (response.cmd_id) {
             // get target promise
-            let _promise = promises.filter(p => {
-                if (p.cmd_id === response.cmd_id) return p
-            })
-            if (_promise.length) {
-                let promise = _promise[0]
+            let promise = promises[response.cmd_id]
 
-                // clear promises from found promise
-                promises = promises.filter(p => {
-                    if (p.cmd_id !== response.cmd_id) return p
-                })
-
+            if (promise) {
                 let elapsed = new Date() - promise.created
                 elapsed = Math.abs(elapsed / 1000)
 
                 if (response.error) {
-                    if (verbose) console.log(`<- [${promise.cmd_id}] ${promise.endpoint} ${elapsed} ${response.error}`)
+                    log(`<- [${response.cmd_id}] ${promise.endpoint} ${elapsed} ${response.error}`)
                     promise.reject(new DceException(response.error, response.error_data))
                 } else {
-                    if (verbose) console.log(`<- [${promise.cmd_id}] ${promise.endpoint} ${elapsed}`)
+                    const log_str = `<- [${response.cmd_id}] ${promise.endpoint} ${elapsed}`
+                    if (debug_data_response) {
+                        log(log_str, response.data)
+                    } else {
+                        log(log_str)
+                    }
                     promise.resolve(response.data)
                 }
+
+                // clear promises from found promise
+                delete promises[response.cmd_id]
             }
         }
 
         // routes consumers messages
         else {
-            if (!Array.isArray(response.consumers)) {
-                throw new DceException('No consumers list in response.', null)
-            }
-            if (response.consumers.length === 0) {
-                throw new DceException('Empty consumers list in response.', null)
-            }
-            else {
-                for (let c of response.consumers) {
-                    let consumer = get_consumer(c)
-                    consumer(response)
+            for (let c of response.consumers) {
+                let consumer = get_consumer(c)
+
+                const log_str = `<- [${c}]`
+                if (debug_data_response) {
+                    log(log_str, response.data)
+                } else {
+                    log(log_str)
                 }
+
+                consumer(response.data)
             }
         }
-
     }
 }
 
@@ -128,18 +143,18 @@ socket.onmessage = (event) => { onmessage(event) }
 
 const waitConnection = (func) => {
     /*
-    Check connection every 0.5 second and call received function then done
+    Check connection every 0.1 second and call received function then done
      */
 
     if (socket.readyState === 1) { return func() }
     else {
         setTimeout(() => {
             waitConnection(func)
-        }, 500)
+        }, 100)
     }
 }
 
-export const dce = (endpoint, data, token, log_data_filter=null, push=false) => {
+export const dce = (endpoint, data, {push=false, token=null, log_data_filter=null} = {}) => {
     /*
     Promises factory and sender
     */
@@ -153,25 +168,19 @@ export const dce = (endpoint, data, token, log_data_filter=null, push=false) => 
         if (token) {
             token.cancel = () => {
                 // get canceled promise
-                let promise
-                let _promise = promises.filter(p => {
-                    if (p.cmd_id === _cmd_id) return p
-                })
-                if (_promise.length) {
-                    promise = _promise[0]  // canceled promise
+                let promise = promises[_cmd_id]
 
-                    // clear promises from canceled
-                    promises = promises.filter(p => {
-                        if (p.cmd_id !== _cmd_id) return p
-                    })
-
+                if (promise) {
                     let elapsed = new Date() - promise.created
                     elapsed = Math.abs(elapsed / 1000)
-                    if (verbose) console.log(`<- [${promise.cmd_id}] ${promise.endpoint} ${elapsed} CanceledError`)
+                    log(`<- [${_cmd_id}] ${promise.endpoint} ${elapsed} CanceledError`)
 
                     // cancel request on backend
                     socket.send(JSON.stringify({endpoint: endpoint, cmd_id: _cmd_id, data: null, cancel: true}))
                     reject(new DceException('CancelledError', null))
+
+                    // clear promises from canceled
+                    delete promises[_cmd_id]
                 }
             }
             token.cmd_id = () => {
@@ -179,32 +188,29 @@ export const dce = (endpoint, data, token, log_data_filter=null, push=false) => 
             }
         }
 
+        // if not push mode save promise
         if (!push) {
-            // if not push mode save promise
-            promises.push({
-                cmd_id: _cmd_id,
+            promises[_cmd_id] = {
                 resolve: resolve,
                 reject: reject,
                 endpoint: endpoint,
                 token: token,
                 created: new Date()
-            })
+            }
         }
 
+        // log
+        let log_data
         if (log_data_filter) {
-            if (push) {
-                if (verbose) console.log(`-> [${_cmd_id}] [push] ${endpoint}`, log_data_filter(data))
-            } else {
-                if (verbose) console.log(`-> [${_cmd_id}] ${endpoint}`, log_data_filter(data))
-            }
+            log_data = log_data_filter(cloneDeep(data))  // shallow copy data object for filter data mutation
         } else {
-            if (push) {
-                if (verbose) console.log(`-> [${_cmd_id}] [push] ${endpoint}`, data)
-            } else {
-                if (verbose) console.log(`-> [${_cmd_id}] ${endpoint}`, data)
-            }
+            log_data = data
         }
-
+        if (push) {
+            log(`-> [${_cmd_id}] [push] ${endpoint}`, log_data)
+        } else {
+            log(`-> [${_cmd_id}] ${endpoint}`, log_data)
+        }
 
         // wait connection & send
         waitConnection (()=> {
@@ -220,18 +226,19 @@ Consumers
 let registered_consumers = {}
 
 
-export const consumer = func => {
+export const consumer = (name, func) => {
     if (typeof func !== 'function') {
-        throw new DceException(`Registered consumer "${func}" must be a function.`, null)
+        throw new DceException(`Registered consumer "${name}" must be a function.`, null)
     }
-    registered_consumers[func.prototype.constructor.name] = func
+    registered_consumers[name] = func
 }
 
 const get_consumer = name => {
-    if (!registered_consumers.hasOwnProperty(name)) {
+    let consumer = registered_consumers[name]
+    if (!consumer) {
       throw new DceException(`Consumer ${name} not found.`)
     }
-    return registered_consumers[name]
+    return consumer
 }
 
 /*

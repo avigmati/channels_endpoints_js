@@ -1,7 +1,7 @@
 {
   "name": "channels_endpoints",
-  "version": "1.1.2",
-  "description": "Client library for channels_endpoints python package",
+  "version": "1.1.4",
+  "description": "Client library for django channels_endpoints python package",
   "main": "dist/bundle.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -16,14 +16,15 @@
     "channels",
     "websocket"
   ],
-  "author": "avigmati",
+  "author": "Dmitry Novikov",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/avigmati/channels_endpoints_js/issues"
   },
   "homepage": "https://github.com/avigmati/channels_endpoints_js#readme",
   "dependencies": {
-    "reconnecting-websocket": "^4.4.0"
+    "reconnecting-websocket": "^4.4.0",
+    "lodash.clonedeep": "^4.5.0"
   },
   "devDependencies": {
     "babel-core": "^6.26.3",
