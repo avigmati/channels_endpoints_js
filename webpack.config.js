@@ -1,11 +1,16 @@
 const path = require('path')
 
 module.exports = {
-    entry: './index.js',
+    target: 'web',
+    entry: {
+        index: './channels_endpoints.js',
+    },
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: 'bundle.js',
+        filename: 'channels_endpoints.js',
         library: 'channels_endpoints',
-        libraryTarget: 'umd'
+        libraryTarget: 'umd',
+        globalObject: 'this',
+        umdNamedDefine: true
     }
 }
