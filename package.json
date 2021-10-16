@@ -26,8 +26,8 @@
   },
   "homepage": "https://github.com/avigmati/channels_endpoints_js#readme",
   "dependencies": {
-    "reconnecting-websocket": "^4.4.0",
-    "lodash.clonedeep": "^4.5.0"
+    "lodash.clonedeep": "^4.5.0",
+    "reconnecting-websocket": "^4.4.0"
   },
   "devDependencies": {
     "babel-core": "^6.26.3",
