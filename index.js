@@ -23,13 +23,28 @@ const debug = (typeof DCE_DEBUG !== 'undefined') ? DCE_DEBUG : false
 const debug_data_request = (typeof DCE_DEBUG_DATA_REQUEST !== 'undefined') ? DCE_DEBUG_DATA_REQUEST : false
 const debug_data_response = (typeof DCE_DEBUG_DATA_RESPONSE !== 'undefined') ? DCE_DEBUG_DATA_RESPONSE : false
 
-const log = (log_str, log_data=null) => {
-    log_str = `[dce] ${log_str}`
+const log = (type, log_str, log_data=null) => {
     if (debug) {
-        if (debug_data_request && log_data) {
-            console.log(log_str, log_data)
+        let _log_str
+        let _log_data = null
+        if (type === 'request') {
+            _log_str = `[dce] -> ${log_str}`
+            if (debug_data_request) {
+                _log_data = log_data
+            }
+        } else if (type === 'response') {
+            _log_str = `[dce] <- ${log_str}`
+            if (debug_data_response) {
+                _log_data = log_data
+            }
         } else {
-            console.log(log_str)
+            _log_str = `[dce] ${log_str}`
+            _log_data = log_data
+        }
+        if (_log_data) {
+            console.log(_log_str, _log_data)
+        } else {
+            console.log(_log_str)
         }
     }
 }
@@ -55,12 +70,12 @@ Socket callbacks
  */
 
 const onopen = () => {
-    log('Connection open')
+    log(null,'Connection open')
     dce_connection.dispatchEvent(new Event('connected'))
 }
 
 const onclose = () => {
-    log('Connection close')
+    log(null, 'Connection close')
     dce_connection.dispatchEvent(new Event('disconnected'))
 }
 
@@ -82,7 +97,7 @@ const onmessage = (event) => {
         if (response.error) {
             throw new DceException(response.error, response.error_data)
         } else {
-            log('service:', response.data)
+            log(null, 'service:', response.data)
         }
     }
 
@@ -99,15 +114,10 @@ const onmessage = (event) => {
                 elapsed = Math.abs(elapsed / 1000)
 
                 if (response.error) {
-                    log(`<- [${response.cmd_id}] ${promise.endpoint} ${elapsed} ${response.error}`)
+                    log('response', `[${response.cmd_id}] ${promise.endpoint} ${elapsed} ${response.error}`, response.error_data)
                     promise.reject(new DceException(response.error, response.error_data))
                 } else {
-                    const log_str = `<- [${response.cmd_id}] ${promise.endpoint} ${elapsed}`
-                    if (debug_data_response) {
-                        log(log_str, response.data)
-                    } else {
-                        log(log_str)
-                    }
+                    log('response', `[${response.cmd_id}] ${promise.endpoint} ${elapsed}`, response.data)
                     promise.resolve(response.data)
                 }
 
@@ -120,14 +130,7 @@ const onmessage = (event) => {
         else {
             for (let c of response.consumers) {
                 let consumer = get_consumer(c)
-
-                const log_str = `<- [${c}]`
-                if (debug_data_response) {
-                    log(log_str, response.data)
-                } else {
-                    log(log_str)
-                }
-
+                log('response', `[${c}]`, response.data)
                 consumer(response.data)
             }
         }
@@ -173,7 +176,7 @@ export const dce = (endpoint, data, {push=false, token=null, log_data_filter=nul
                 if (promise) {
                     let elapsed = new Date() - promise.created
                     elapsed = Math.abs(elapsed / 1000)
-                    log(`<- [${_cmd_id}] ${promise.endpoint} ${elapsed} CanceledError`)
+                    log('response', `[${_cmd_id}] ${promise.endpoint} ${elapsed} CanceledError`)
 
                     // cancel request on backend
                     socket.send(JSON.stringify({endpoint: endpoint, cmd_id: _cmd_id, data: null, cancel: true}))
@@ -202,14 +205,14 @@ export const dce = (endpoint, data, {push=false, token=null, log_data_filter=nul
         // log
         let log_data
         if (log_data_filter) {
-            log_data = log_data_filter(cloneDeep(data))  // shallow copy data object for filter data mutation
+            log_data = log_data_filter(cloneDeep(data))  // use shallow copy data object
         } else {
             log_data = data
         }
         if (push) {
-            log(`-> [${_cmd_id}] [push] ${endpoint}`, log_data)
+            log('request',`[${_cmd_id}] [push] ${endpoint}`, log_data)
         } else {
-            log(`-> [${_cmd_id}] ${endpoint}`, log_data)
+            log('request',`[${_cmd_id}] ${endpoint}`, log_data)
         }
 
         // wait connection & send
